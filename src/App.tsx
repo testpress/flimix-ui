@@ -2,77 +2,41 @@ import { useEffect, useState } from 'react';
 import { loadWidgets } from './loadWidgets';
 import WidgetRenderer from './WidgetRenderer';
 
-const pageJson = {
-  type: 'page',
-  children: [
-    {
-      type: 'hero',
-      attributes: {
-        backgroundImage: 'https://image.tmdb.org/t/p/original/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
-        title: 'Dune: Part Two',
-        description: 'Paul Atreides unites with the Fremen to wage war against House Harkonnen.',
-        cta: { text: 'Watch Now', link: '#' }
-      }
-    },
-    {
-      type: 'carousel',
-      attributes: { title: 'Trending Now' },
-      children: [
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'Oppenheimer',
-            poster: 'https://image.tmdb.org/t/p/w500/ptpr0kGAckfQkJeJIt8st5dglvd.jpg',
-            link: '#'
-          }
-        },
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'The Batman',
-            poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
-            link: '#'
-          }
-        }
-      ]
-    },
-    {
-      type: 'carousel',
-      attributes: { title: 'Action & Adventure' },
-      children: [
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'John Wick 4',
-            poster: 'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
-            link: '#'
-          }
-        },
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'Extraction 2',
-            poster: 'https://image.tmdb.org/t/p/w500/7gKI9hpEMcZUQpNgKrkDzJpbnNS.jpg',
-            link: '#'
-          }
-        }
-      ]
-    }
-  ]
-};
-
 function App() {
   const [ready, setReady] = useState(false);
+  const [pageData, setPageData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Load widgets first
     loadWidgets().then(() => setReady(true));
+    
+    // Fetch page data from API
+    fetch('http://localhost:8002/api/page-data/')
+      .then(response => response.json())
+      .then(data => {
+        setPageData(data);
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching page data:', error);
+        setLoading(false);
+      });
   }, []);
 
-  if (!ready) return <div style={{ color: 'white' }}>Loading widgets...</div>;
+  if (!ready || loading) {
+    return <div style={{ color: 'white', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Loading...</div>;
+  }
 
   return (
-    <div style={{ backgroundColor: '#111', color: 'white' }}>
-      {pageJson.children.map((widget, index) => (
+    <div style={{ 
+      backgroundColor: '#111', 
+      color: 'white',
+      width: '100%',
+      minHeight: '100vh',
+      overflow: 'hidden'
+    }}>
+      {pageData?.children.map((widget: any, index: number) => (
         <WidgetRenderer key={index} widget={widget} />
       ))}
     </div>

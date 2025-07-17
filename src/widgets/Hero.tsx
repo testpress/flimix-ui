@@ -9,8 +9,9 @@ const HeroWidget: WidgetModule = {
     const { backgroundImage, title, description, cta } = attributes;
     return (
       <div style={{
-        backgroundImage: `url(${backgroundImage})`,
-        height: "60vh",
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(${backgroundImage})`,
+        height: "80vh",
+        width: "100%",
         backgroundSize: "cover",
         backgroundPosition: "center",
         color: "white",
@@ -19,15 +20,22 @@ const HeroWidget: WidgetModule = {
         justifyContent: "center",
         padding: "40px"
       }}>
-        <h1 style={{ fontSize: "3em", margin: 0 }}>{title}</h1>
-        <p style={{ fontSize: "1.2em", maxWidth: "600px" }}>{description}</p>
-        <a href={cta.link} style={{
-          marginTop: "20px",
-          padding: "10px 20px",
-          backgroundColor: "red",
-          color: "white",
-          textDecoration: "none"
-        }}>{cta.text}</a>
+        <div style={{ maxWidth: "800px" }}>
+          <h1 style={{ fontSize: "3.5em", margin: 0, textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>{title}</h1>
+          <p style={{ fontSize: "1.2em", maxWidth: "600px", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>{description}</p>
+          <a href={cta.link} style={{
+            display: "inline-block",
+            marginTop: "20px",
+            padding: "12px 24px",
+            backgroundColor: "white",
+            color: "black",
+            textDecoration: "none",
+            borderRadius: "4px",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "1px"
+          }}>{cta.text}</a>
+        </div>
       </div>
     );
   }
