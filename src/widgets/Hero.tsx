@@ -5,7 +5,7 @@ const HeroWidget: WidgetModule = {
     return 'hero';
   },
 
-  render({ attributes }) {
+  render({ attributes, children }) {
     const { backgroundImage, title, description, cta } = attributes;
     return (
       <div style={{
@@ -18,12 +18,13 @@ const HeroWidget: WidgetModule = {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        padding: "40px"
+        padding: "40px",
+        position: "relative"
       }}>
         <div style={{ maxWidth: "800px" }}>
           <h1 style={{ fontSize: "3.5em", margin: 0, textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>{title}</h1>
           <p style={{ fontSize: "1.2em", maxWidth: "600px", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>{description}</p>
-          <a href={cta.link} style={{
+          <a href={cta?.link || '#'} style={{
             display: "inline-block",
             marginTop: "20px",
             padding: "12px 24px",
@@ -34,8 +35,9 @@ const HeroWidget: WidgetModule = {
             fontWeight: "bold",
             textTransform: "uppercase",
             letterSpacing: "1px"
-          }}>{cta.text}</a>
+          }}>{cta?.text || 'Watch Now'}</a>
         </div>
+        {children}
       </div>
     );
   }
