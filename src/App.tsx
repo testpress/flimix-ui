@@ -26,17 +26,11 @@ function App() {
   }, []);
 
   if (!ready || loading) {
-    return <div style={{ color: 'white', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Loading...</div>;
+    return <div className="text-white h-screen flex justify-center items-center">Loading...</div>;
   }
 
   return (
-    <div style={{ 
-      backgroundColor: '#111', 
-      color: 'white',
-      width: '100%',
-      minHeight: '100vh',
-      overflow: 'hidden'
-    }}>
+    <div className="bg-[#111] text-white w-full min-h-screen overflow-hidden">
       {pageData?.children.map((widget: any, index: number) => (
         <WidgetRenderer key={index} widget={widget} />
       ))}

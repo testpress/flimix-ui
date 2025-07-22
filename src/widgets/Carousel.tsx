@@ -8,25 +8,9 @@ const Carousel: WidgetModule = {
 
   render({ attributes, children }) {
     return (
-      <div style={{ 
-        padding: "20px 40px", 
-        width: "100%",
-        boxSizing: "border-box"
-      }}>
-        <h2 style={{ 
-          color: "white", 
-          marginBottom: "16px",
-          fontSize: "1.8em",
-          fontWeight: "600" 
-        }}>{attributes.title}</h2>
-        <div style={{
-          display: "flex",
-          overflowX: "auto",
-          gap: "16px",
-          paddingBottom: "20px",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#333 #111"
-        }}>
+      <div className="px-10 py-5 w-full box-border">
+        <h2 className="text-white mb-4 text-[1.8em] font-semibold">{attributes.title}</h2>
+        <div className="flex overflow-x-auto gap-4 pb-5 scrollbar-thin scrollbar-thumb-[#333] scrollbar-track-[#111]">
           {children}
         </div>
       </div>
