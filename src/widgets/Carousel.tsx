@@ -1,4 +1,5 @@
 import type { WidgetModule } from './BaseWidget';
+import WidgetRenderer from '../WidgetRenderer';
 
 const Carousel: WidgetModule = {
   getType() {
@@ -7,9 +8,14 @@ const Carousel: WidgetModule = {
 
   render({ attributes, children }) {
     return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">{attributes.title}</h2>
-        <div className="flex overflow-x-auto gap-4 pb-4">
+      <div style={{ padding: "20px" }}>
+        <h2 style={{ color: "white", marginBottom: "10px" }}>{attributes.title}</h2>
+        <div style={{
+          display: "flex",
+          overflowX: "auto",
+          gap: "10px",
+          paddingBottom: "10px"
+        }}>
           {children}
         </div>
       </div>

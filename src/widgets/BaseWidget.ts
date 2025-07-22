@@ -1,12 +1,10 @@
-
-
 export interface WidgetProps {
   attributes: any;
-  children?: React.ReactElement[];
+  children?: JSX.Element[];
 }
 
 export interface WidgetModule {
   getType(): string;
-  render(props: WidgetProps): React.ReactElement;
+  render(props: WidgetProps): JSX.Element;
 }
 

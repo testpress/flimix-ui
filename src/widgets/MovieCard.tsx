@@ -8,13 +8,18 @@ const MovieCard: WidgetModule = {
   render({ attributes }) {
     const { poster, title, link } = attributes;
     return (
-      <a href={link} className="block text-white no-underline min-w-40 hover:scale-105 transition-transform">
+      <a href={link} style={{ textDecoration: "none", color: "white", minWidth: "160px" }}>
         <img
           src={poster}
           alt={title}
-          className="w-40 h-60 object-cover rounded-lg shadow-lg"
+          style={{
+            width: "160px",
+            height: "240px",
+            objectFit: "cover",
+            borderRadius: "5px"
+          }}
         />
-        <p className="mt-2 text-sm font-medium truncate">{title}</p>
+        <p style={{ marginTop: "5px", fontSize: "0.9em" }}>{title}</p>
       </a>
     );
   }
