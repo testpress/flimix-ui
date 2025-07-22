@@ -1,10 +1,12 @@
+import type { ReactNode } from 'react';
+
 export interface WidgetProps {
-  attributes: any;
-  children?: JSX.Element[];
+  attributes: Record<string, any>;
+  children?: ReactNode[];
 }
 
 export interface WidgetModule {
   getType(): string;
-  render(props: WidgetProps): JSX.Element;
+  render(props: WidgetProps): ReactNode;
 }
 

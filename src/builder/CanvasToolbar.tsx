@@ -1,6 +1,7 @@
 import { Smartphone, Tablet, Monitor as Desktop } from 'lucide-react';
 
 export default function CanvasToolbar({ viewport, setViewport }: any) {
+  // Toolbar for switching between device viewports
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">

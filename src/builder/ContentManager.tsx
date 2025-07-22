@@ -1,128 +1,125 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { endpoints } from './api';
 import { toast } from 'react-hot-toast';
 import { Plus, X, Search, Grid, List, Move } from 'lucide-react';
 
 export default function ContentManager({ section, onContentUpdate }: any) {
+  // Search/filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [contentType, setContentType] = useState('all');
+  const [selectedContentType, setSelectedContentType] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
+  // Drag-and-drop state
   const [isDragging, setIsDragging] = useState(false);
-  const [dragData, setDragData] = useState<any>(null);
+  const [draggedContent, setDraggedContent] = useState<any>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+  // Content data
+  const [movies, setMovies] = useState<any[]>([]);
+  const [series, setSeries] = useState<any[]>([]);
+  const [sectionContent, setSectionContent] = useState<any[]>([]);
 
-  const { data: movies = [] } = useQuery({
-    queryKey: ['movies'],
-    queryFn: endpoints.movies,
-  });
-  const { data: series = [] } = useQuery({
-    queryKey: ['series'],
-    queryFn: endpoints.series,
-  });
-  const { data: sectionContent = [] } = useQuery({
-    queryKey: ['section-content', section.id],
-    queryFn: () => endpoints.getSectionContent(section.id),
-  });
+  // Fetch all content and section content on mount or section change
+  useEffect(() => {
+    async function fetchAllContent() {
+      const [moviesData, seriesData, sectionContentData] = await Promise.all([
+        endpoints.movies(),
+        endpoints.series(),
+        endpoints.getSectionContent(section.id)
+      ]);
+      setMovies(moviesData);
+      setSeries(seriesData);
+      setSectionContent(sectionContentData);
+    }
+    fetchAllContent();
+  }, [section.id]);
 
-  const addContentMutation = useMutation({
-    mutationFn: ({ sectionId, data }: any) => endpoints.addContentToSection(sectionId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sections'] });
-      queryClient.invalidateQueries({ queryKey: ['section-content', section.id] });
-      queryClient.invalidateQueries({ queryKey: ['page-data'] });
+  // Add content to section
+  const handleAddContentToSection = async (contentItem: any) => {
+    const contentData = {
+      content_type: contentItem.type,
+      content_id: contentItem.id
+    };
+    try {
+      // For hero section, only one content allowed
+      if (section.section_type === 'hero' && sectionContent.length >= 1) {
+        await endpoints.removeContentFromSection(section.id, sectionContent[0].id);
+      }
+      await endpoints.addContentToSection(section.id, contentData);
+      const updatedSectionContent = await endpoints.getSectionContent(section.id);
+      setSectionContent(updatedSectionContent);
       toast.success('Content added to section!');
       onContentUpdate();
-    },
-    onError: () => toast.error('Failed to add content')
-  });
-
-  const removeContentMutation = useMutation({
-    mutationFn: ({ sectionId, itemId }: any) => endpoints.removeContentFromSection(sectionId, itemId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sections'] });
-      queryClient.invalidateQueries({ queryKey: ['section-content', section.id] });
-      queryClient.invalidateQueries({ queryKey: ['page-data'] });
-      toast.success('Content removed from section!');
-      onContentUpdate();
-    },
-    onError: () => toast.error('Failed to remove content')
-  });
-
-  const handleAddContent = async (content: any) => {
-    const data = {
-      content_type: content.type,
-      content_id: content.id
-    };
-    if (section.section_type === 'hero' && sectionContent.length >= 1) {
-      await removeContentMutation.mutateAsync({ sectionId: section.id, itemId: sectionContent[0].id });
-    }
-    addContentMutation.mutate({ sectionId: section.id, data });
-  };
-
-  const handleRemoveContent = (itemId: number) => {
-    removeContentMutation.mutate({ sectionId: section.id, itemId });
-  };
-
-  const handleDragStart = (e: React.DragEvent, content: any) => {
-    setIsDragging(true);
-    setDragData(content);
-    e.dataTransfer.setData('application/json', JSON.stringify(content));
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setDragData(null);
-    setDragOverTarget(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    setDragOverTarget(null);
-    try {
-      const content = JSON.parse(e.dataTransfer.getData('application/json'));
-      handleAddContent(content);
-    } catch (error) {
+    } catch {
       toast.error('Failed to add content');
     }
   };
 
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOverTarget('section');
+  // Remove content from section
+  const handleRemoveContentFromSection = async (contentItemId: number) => {
+    try {
+      await endpoints.removeContentFromSection(section.id, contentItemId);
+      const updatedSectionContent = await endpoints.getSectionContent(section.id);
+      setSectionContent(updatedSectionContent);
+      toast.success('Content removed from section!');
+      onContentUpdate();
+    } catch {
+      toast.error('Failed to remove content');
+    }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+  // Drag-and-drop handlers for adding content
+  const handleDragStart = (event: React.DragEvent, contentItem: any) => {
+    setIsDragging(true);
+    setDraggedContent(contentItem);
+    event.dataTransfer.setData('application/json', JSON.stringify(contentItem));
+    event.dataTransfer.effectAllowed = 'copy';
+  };
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedContent(null);
+    setDragOverTarget(null);
+  };
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  };
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragging(false);
+    setDragOverTarget(null);
+    try {
+      const contentItem = JSON.parse(event.dataTransfer.getData('application/json'));
+      handleAddContentToSection(contentItem);
+    } catch (error) {
+      toast.error('Failed to add content');
+    }
+  };
+  const handleDragEnter = (event: React.DragEvent) => {
+    event.preventDefault();
+    setDragOverTarget('section');
+  };
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node)) {
       setDragOverTarget(null);
     }
   };
 
-  const allContent = [
+  // Combine and filter all content
+  const allContentItems = [
     ...movies.map((movie: any) => ({ ...movie, type: 'movie' })),
-    ...series.map((series: any) => ({ ...series, type: 'series' }))
+    ...series.map((seriesItem: any) => ({ ...seriesItem, type: 'series' }))
   ];
-
-  const filteredContent = allContent.filter(content => {
-    const matchesSearch = content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      content.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = contentType === 'all' || content.type === contentType;
+  const filteredContentItems = allContentItems.filter(contentItem => {
+    const matchesSearch = contentItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contentItem.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedContentType === 'all' || contentItem.type === selectedContentType;
     return matchesSearch && matchesType;
   });
-
   const isHeroSectionWithContent = section.section_type === 'hero' && sectionContent.length >= 1;
 
   return (
     <div className="flex h-full">
+      {/* Left panel: content search and add */}
       <div className="w-1/2 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-4 mb-4">
@@ -137,8 +134,8 @@ export default function ContentManager({ section, onContentUpdate }: any) {
               />
             </div>
             <select
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
+              value={selectedContentType}
+              onChange={(e) => setSelectedContentType(e.target.value)}
               className="text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Content</option>
@@ -161,37 +158,37 @@ export default function ContentManager({ section, onContentUpdate }: any) {
             </div>
           </div>
           <p className="text-sm text-gray-600">
-            Found {filteredContent.length} items • Drag to add to section
+            Found {filteredContentItems.length} items • Drag to add to section
           </p>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {viewMode === 'grid' ? (
             <div className="grid grid-cols-2 gap-3">
-              {filteredContent.map((content: any) => (
+              {filteredContentItems.map((contentItem: any) => (
                 <div
-                  key={`${content.type}-${content.id}`}
+                  key={`${contentItem.type}-${contentItem.id}`}
                   draggable
-                  onDragStart={(e) => handleDragStart(e, content)}
+                  onDragStart={(event) => handleDragStart(event, contentItem)}
                   onDragEnd={handleDragEnd}
                   className="border border-gray-200 rounded-lg p-3 cursor-move hover:border-blue-300 hover:shadow-sm transition-all group"
                 >
                   <div className="relative">
                     <img
-                      src={content.poster_url || 'https://placehold.co/200x300?text=No+Image'}
-                      alt={content.title}
+                      src={contentItem.poster_url || 'https://placehold.co/200x300?text=No+Image'}
+                      alt={contentItem.title}
                       className="w-full h-32 object-cover rounded mb-2"
-                      onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/200x300?text=No+Image'; }}
+                      onError={event => { (event.target as HTMLImageElement).src = 'https://placehold.co/200x300?text=No+Image'; }}
                     />
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Move className="h-4 w-4 text-white bg-black bg-opacity-50 rounded p-1" />
                     </div>
                   </div>
-                  <h4 className="font-medium text-sm text-gray-900 truncate">{content.title}</h4>
+                  <h4 className="font-medium text-sm text-gray-900 truncate">{contentItem.title}</h4>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-500 capitalize">{content.type}</span>
+                    <span className="text-xs text-gray-500 capitalize">{contentItem.type}</span>
                     {isHeroSectionWithContent ? null : (
                       <button
-                        onClick={() => handleAddContent(content)}
+                        onClick={() => handleAddContentToSection(contentItem)}
                         className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                       >
                         Add
@@ -203,30 +200,30 @@ export default function ContentManager({ section, onContentUpdate }: any) {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredContent.map((content: any) => (
+              {filteredContentItems.map((contentItem: any) => (
                 <div
-                  key={`${content.type}-${content.id}`}
+                  key={`${contentItem.type}-${contentItem.id}`}
                   draggable
-                  onDragStart={(e) => handleDragStart(e, content)}
+                  onDragStart={(event) => handleDragStart(event, contentItem)}
                   onDragEnd={handleDragEnd}
                   className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-move hover:border-blue-300 hover:shadow-sm transition-all group"
                 >
                   <img
-                    src={content.poster_url || 'https://placehold.co/100x150?text=No+Image'}
-                    alt={content.title}
+                    src={contentItem.poster_url || 'https://placehold.co/100x150?text=No+Image'}
+                    alt={contentItem.title}
                     className="w-12 h-16 object-cover rounded"
-                    onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x150?text=No+Image'; }}
+                    onError={event => { (event.target as HTMLImageElement).src = 'https://placehold.co/100x150?text=No+Image'; }}
                   />
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm text-gray-900 truncate">{content.title}</h4>
-                    <p className="text-xs text-gray-500 truncate">{content.description}</p>
-                    <span className="text-xs text-gray-400 capitalize">{content.type}</span>
+                    <h4 className="font-medium text-sm text-gray-900 truncate">{contentItem.title}</h4>
+                    <p className="text-xs text-gray-500 truncate">{contentItem.description}</p>
+                    <span className="text-xs text-gray-400 capitalize">{contentItem.type}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Move className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     {isHeroSectionWithContent ? null : (
                       <button
-                        onClick={() => handleAddContent(content)}
+                        onClick={() => handleAddContentToSection(contentItem)}
                         className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
                       >
                         Add
@@ -239,6 +236,7 @@ export default function ContentManager({ section, onContentUpdate }: any) {
           )}
         </div>
       </div>
+      {/* Right panel: section content */}
       <div className="w-1/2 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <h3 className="font-semibold text-gray-900 mb-2">Section Content</h3>
@@ -258,26 +256,26 @@ export default function ContentManager({ section, onContentUpdate }: any) {
           {sectionContent && sectionContent.length > 0 ? (
             <div className="space-y-3">
               {sectionContent.map((item: any) => {
-                const content = item.content || {};
+                const contentItem = item.content || {};
                 return (
                   <div
                     key={item.id}
                     className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <img
-                      src={content.poster_url || 'https://placehold.co/60x80?text=No+Image'}
-                      alt={content.title || 'Content'}
+                      src={contentItem.poster_url || 'https://placehold.co/60x80?text=No+Image'}
+                      alt={contentItem.title || 'Content'}
                       className="w-12 h-16 object-cover rounded"
-                      onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/60x80?text=No+Image'; }}
+                      onError={event => { (event.target as HTMLImageElement).src = 'https://placehold.co/60x80?text=No+Image'; }}
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm text-gray-900 truncate">{content.title || 'Untitled'}</h4>
-                      <p className="text-xs text-gray-500 truncate">{content.description || 'No description'}</p>
+                      <h4 className="font-medium text-sm text-gray-900 truncate">{contentItem.title || 'Untitled'}</h4>
+                      <p className="text-xs text-gray-500 truncate">{contentItem.description || 'No description'}</p>
                       <span className="text-xs text-gray-400 capitalize">{item.content_type}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleRemoveContent(item.id)}
+                        onClick={() => handleRemoveContentFromSection(item.id)}
                         className="p-1 text-red-400 hover:text-red-600"
                         title="Remove"
                       >
@@ -313,18 +311,19 @@ export default function ContentManager({ section, onContentUpdate }: any) {
           )}
         </div>
       </div>
-      {isDragging && dragData && (
+      {/* Drag preview overlay */}
+      {isDragging && draggedContent && (
         <div className="fixed inset-0 bg-blue-500 bg-opacity-10 pointer-events-none z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-lg p-4 border-2 border-dashed border-blue-500">
             <div className="flex items-center gap-3">
               <img
-                src={dragData.poster_url || 'https://placehold.co/40x60?text=No+Image'}
-                alt={dragData.title}
+                src={draggedContent.poster_url || 'https://placehold.co/40x60?text=No+Image'}
+                alt={draggedContent.title}
                 className="w-10 h-15 object-cover rounded"
               />
               <div>
-                <span className="font-medium">{dragData.title}</span>
-                <span className="text-sm text-gray-500 capitalize ml-2">({dragData.type})</span>
+                <span className="font-medium">{draggedContent.title}</span>
+                <span className="text-sm text-gray-500 capitalize ml-2">({draggedContent.type})</span>
               </div>
             </div>
           </div>

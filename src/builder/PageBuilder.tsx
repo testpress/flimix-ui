@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { endpoints } from './api';
 import { toast } from 'react-hot-toast';
 import ContentManager from './ContentManager';
@@ -11,73 +10,55 @@ import CanvasToolbar from './CanvasToolbar';
 import PageCanvas from './PageCanvas';
 
 interface PageBuilderProps {
-  setIsPreviewMode: (v: boolean) => void;
+  setIsPreviewMode: (isPreview: boolean) => void;
+  onPageUpdate?: () => void;
 }
 
-export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
+export default function PageBuilder({ setIsPreviewMode, onPageUpdate }: PageBuilderProps) {
+  const [landingPages, setLandingPages] = useState<any[]>([]);
   const [selectedLandingPage, setSelectedLandingPage] = useState<any>(null);
   const [selectedSection, setSelectedSection] = useState<any>(null);
-  const [isPreviewMode, setIsPreviewModeLocal] = useState(false);
+  const [isLocalPreviewMode, setIsLocalPreviewMode] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [showContentManager, setShowContentManager] = useState(false);
+  const [isContentManagerOpen, setIsContentManagerOpen] = useState(false);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
-  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Sync local state with parent state
-  const handlePreviewModeChange = (value: boolean) => {
-    setIsPreviewModeLocal(value);
-    setIsPreviewMode(value);
+  // Load landing pages on mount
+  useEffect(() => {
+    endpoints.landingPages().then((pages) => {
+      setLandingPages(pages);
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Sync local preview mode with parent
+  const handlePreviewModeChange = (isPreview: boolean) => {
+    setIsLocalPreviewMode(isPreview);
+    setIsPreviewMode(isPreview);
+    if (isPreview && onPageUpdate) {
+      onPageUpdate();
+    }
   };
 
-  const { data: landingPages = [], isLoading } = useQuery({
-    queryKey: ['landing-pages'],
-    queryFn: endpoints.landingPages,
-  });
-
-  const createSectionMutation = useMutation({
-    mutationFn: (data: any) => endpoints.createSection(data),
-    onSuccess: (newSection) => {
-      queryClient.invalidateQueries({ queryKey: ['sections'] });
-      toast.success('Section created successfully!');
-      return newSection;
-    },
-    onError: () => toast.error('Failed to create section')
-  });
-
-  const addSectionToLandingPageMutation = useMutation({
-    mutationFn: ({ landingPageId, sectionId }: any) => endpoints.addSectionToLandingPage(landingPageId, sectionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['landing-pages'] });
-      toast.success('Section added to page!');
-    },
-    onError: () => toast.error('Failed to add section to page')
-  });
-
-  const removeContentMutation = useMutation({
-    mutationFn: ({ sectionId, itemId }: any) => endpoints.removeContentFromSection(sectionId, itemId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sections'] });
-      queryClient.invalidateQueries({ queryKey: ['landing-pages'] });
-      toast.success('Content removed from section!');
-    },
-    onError: () => toast.error('Failed to remove content')
-  });
-
-  const removeSectionFromLandingPageMutation = useMutation({
-    mutationFn: ({ landingPageId, sectionId }: any) => endpoints.removeSectionFromLandingPage(landingPageId, sectionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['landing-pages'] });
-      toast.success('Section removed from page!');
-    },
-    onError: () => toast.error('Failed to remove section from page')
-  });
-
-  const handleDragStart = (e: React.DragEvent, template: any) => {
-    const { icon, ...serializableTemplate } = template;
+  // Handle drag start for section templates
+  const handleSectionTemplateDragStart = (e: React.DragEvent, sectionTemplate: any) => {
+    const { icon, ...serializableTemplate } = sectionTemplate;
     e.dataTransfer.setData('application/json', JSON.stringify(serializableTemplate));
   };
 
-  const handleSectionDelete = (sectionId: number) => {
+  // Refresh landing pages and update selectedLandingPage
+  const refreshLandingPages = async (currentLandingPageId?: number) => {
+    const updatedLandingPages = await endpoints.landingPages();
+    setLandingPages(updatedLandingPages);
+    const updatedSelected = updatedLandingPages.find(lp => lp.id === (currentLandingPageId || selectedLandingPage?.id));
+    if (updatedSelected) setSelectedLandingPage(updatedSelected);
+    setRefreshKey(prevKey => prevKey + 1); 
+  };
+
+  // Handle section deletion
+  const handleSectionDelete = async (sectionId: number) => {
     if (!selectedLandingPage) return;
     const previousLandingPage = selectedLandingPage;
     const updatedLandingPage = {
@@ -87,18 +68,20 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
       )
     };
     setSelectedLandingPage(updatedLandingPage);
-    removeSectionFromLandingPageMutation.mutate({
-      landingPageId: selectedLandingPage.id,
-      sectionId
-    }, {
-      onError: () => {
-        setSelectedLandingPage(previousLandingPage);
-      }
-    });
+    try {
+      await endpoints.removeSectionFromLandingPage(selectedLandingPage.id, sectionId);
+      toast.success('Section removed from page!');
+      await refreshLandingPages();
+      if (onPageUpdate) onPageUpdate();
+    } catch {
+      setSelectedLandingPage(previousLandingPage);
+      toast.error('Failed to remove section from page');
+    }
     setSelectedSection(null);
   };
 
-  const handleSectionUpdate = (sectionId: number, updates: any) => {
+  // Handle section update (e.g., name change)
+  const handleSectionUpdate = async (sectionId: number, updates: any) => {
     if (!selectedLandingPage) return;
     const updatedLandingPage = {
       ...selectedLandingPage,
@@ -125,61 +108,86 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
         }
       });
     }
+    try {
+      await endpoints.updateSection(sectionId, updates);
+      await refreshLandingPages();
+    } catch {}
   };
 
+  // Open content manager modal for a section
   const handleOpenContentManager = (section: any) => {
     setSelectedSection(section);
-    setShowContentManager(true);
+    setIsContentManagerOpen(true);
   };
 
-  const handleContentUpdate = () => {
-    queryClient.invalidateQueries({ queryKey: ['landing-pages'] });
-    setShowContentManager(false);
+  // Handle content update in modal
+  const handleContentUpdate = async () => {
+    setIsContentManagerOpen(false);
+    await refreshLandingPages();
+    if (onPageUpdate) onPageUpdate();
   };
 
-  const handleRemoveContent = (sectionId: number, contentId: number) => {
-    removeContentMutation.mutate({ sectionId, itemId: contentId });
+  // Remove content from a section
+  const handleRemoveContent = async (sectionId: number, contentId: number) => {
+    if (selectedLandingPage) {
+      if (selectedSection && selectedSection.section.id === sectionId) {
+        setSelectedSection({
+          ...selectedSection,
+          sectionContent: (selectedSection.sectionContent || []).filter(
+            (item: any) => item.id !== contentId
+          )
+        });
+      }
+      try {
+        await endpoints.removeContentFromSection(sectionId, contentId);
+        await refreshLandingPages();
+        toast.success('Content removed from section!');
+        setRefreshKey(prevKey => prevKey + 1);
+        if (onPageUpdate) onPageUpdate();
+      } catch {
+        toast.error('Failed to remove content');
+      }
+    }
   };
 
-  const handleSidebarDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  // Handle drop from sidebar to canvas
   const handleSidebarDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsSidebarDragging(false);
-    const template = JSON.parse(e.dataTransfer.getData('application/json'));
+    let sectionTemplate;
+    try {
+      sectionTemplate = JSON.parse(e.dataTransfer.getData('application/json'));
+    } catch (error) {
+      toast.error('Invalid section data');
+      return;
+    }
     if (!selectedLandingPage) {
       toast.error('Please select a landing page first');
       return;
     }
     try {
-      const newSection = await createSectionMutation.mutateAsync({
-        name: template.name,
-        section_type: template.id,
+      const newSection = await endpoints.createSection({
+        name: sectionTemplate.name,
+        section_type: sectionTemplate.id,
         content_selection_type: 'manual'
       });
-      await addSectionToLandingPageMutation.mutateAsync({
-        landingPageId: selectedLandingPage.id,
-        sectionId: newSection.id
-      });
-      const landingPages = await queryClient.fetchQuery({
-        queryKey: ['landing-pages'],
-        queryFn: endpoints.landingPages,
-      });
-      const updated = (landingPages as any[]).find(lp => lp.id === selectedLandingPage.id);
-      setSelectedLandingPage(updated);
+      await endpoints.addSectionToLandingPage(selectedLandingPage.id, newSection.id);
+      await refreshLandingPages();
       toast.success('Section added!');
+      if (onPageUpdate) onPageUpdate();
     } catch (error) {
       toast.error('Failed to add section');
     }
   };
 
+  // Persist selected landing page in localStorage
   useEffect(() => {
     if (selectedLandingPage?.id) {
       localStorage.setItem('selectedLandingPageId', selectedLandingPage.id);
     }
   }, [selectedLandingPage]);
 
+  // Restore selected landing page from localStorage
   useEffect(() => {
     const savedId = localStorage.getItem('selectedLandingPageId');
     if (savedId && landingPages.length > 0) {
@@ -208,18 +216,18 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
             setSelectedLandingPage={setSelectedLandingPage}
           />
         </div>
-        {!isPreviewMode && (
+        {!isLocalPreviewMode && (
           <CanvasToolbar
             viewport={viewport}
             setViewport={setViewport}
-            isPreviewMode={isPreviewMode}
+            isPreviewMode={isLocalPreviewMode}
             setIsPreviewMode={handlePreviewModeChange}
           />
         )}
       </div>
       <div className="flex-1 flex">
-        {!isPreviewMode && (
-          <SectionSidebar onDragStart={handleDragStart} setIsSidebarDragging={setIsSidebarDragging} />
+        {!isLocalPreviewMode && (
+          <SectionSidebar onDragStart={handleSectionTemplateDragStart} setIsSidebarDragging={setIsSidebarDragging} />
         )}
         <PageCanvas
           selectedLandingPage={selectedLandingPage}
@@ -227,15 +235,15 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
           selectedSection={selectedSection}
           setSelectedSection={setSelectedSection}
           isSidebarDragging={isSidebarDragging}
-          handleSidebarDragOver={handleSidebarDragOver}
           handleSidebarDrop={handleSidebarDrop}
           getSectionType={getSectionType}
           handleOpenContentManager={handleOpenContentManager}
           handleSectionDelete={handleSectionDelete}
           handleRemoveContent={handleRemoveContent}
           viewport={viewport}
+          refreshKey={refreshKey}
         />
-        {!isPreviewMode && selectedSection && (
+        {!isLocalPreviewMode && selectedSection && (
           <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
             <div className="p-4">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Properties</h2>
@@ -247,7 +255,7 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
           </div>
         )}
       </div>
-      {showContentManager && selectedSection && (
+      {isContentManagerOpen && selectedSection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -260,7 +268,7 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
                 </p>
               </div>
               <button
-                onClick={() => setShowContentManager(false)}
+                onClick={() => setIsContentManagerOpen(false)}
                 className="p-2 text-gray-400 hover:text-gray-600"
               >
                 ×
@@ -270,7 +278,7 @@ export default function PageBuilder({ setIsPreviewMode }: PageBuilderProps) {
               <ContentManager
                 section={selectedSection.section}
                 sectionName={selectedSection.section.name}
-                onClose={() => setShowContentManager(false)}
+                onClose={() => setIsContentManagerOpen(false)}
                 onContentUpdate={handleContentUpdate}
               />
             </div>

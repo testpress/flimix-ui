@@ -2,6 +2,7 @@ import { Image, Video } from 'lucide-react';
 import HeroSectionWidget from './HeroSectionWidget';
 import CarouselSectionWidget from './CarouselSectionWidget';
 
+// Registry of all available section types
 export const sectionRegistry = {
   hero: {
     id: 'hero',
@@ -25,5 +26,7 @@ export const sectionRegistry = {
   }
 };
 
+// Get all section types as an array
 export const getSectionTypes = () => Object.values(sectionRegistry);
+// Get a section type by its ID
 export const getSectionType = (id: string) => (sectionRegistry as any)[id] || null; 

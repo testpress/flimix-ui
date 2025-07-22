@@ -10,43 +10,52 @@ export default function PageCanvas({
   selectedSection,
   setSelectedSection,
   isSidebarDragging,
-  handleSidebarDragOver,
   handleSidebarDrop,
   getSectionType,
   handleOpenContentManager,
   handleSectionDelete,
   handleRemoveContent,
-  viewport
+  viewport,
+  refreshKey
 }: any) {
   const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
   const [isSectionDragging, setIsSectionDragging] = useState(false);
+  const [isDropTargetVisible, setIsDropTargetVisible] = useState(false);
 
-  const handleSectionDragStart = (e: React.DragEvent, idx: number) => {
-    setDraggedSectionIndex(idx);
+  // Handle drag start for section reordering
+  const handleSectionDragStart = (e: React.DragEvent, sectionIndex: number) => {
+    setDraggedSectionIndex(sectionIndex);
     setIsSectionDragging(true);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', idx.toString());
+    e.dataTransfer.setData('text/plain', sectionIndex.toString());
   };
 
-  const handleSectionDragOver = (e: React.DragEvent, _idx: number) => {
+  // Allow dropping on section
+  const handleSectionDragOver = (e: React.DragEvent, _sectionIndex: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleSectionDrop = async (e: React.DragEvent, idx: number) => {
+  // Handle drop for section reordering
+  const handleSectionDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
-    if (draggedSectionIndex === null || draggedSectionIndex === idx) return;
+    if (draggedSectionIndex === null || draggedSectionIndex === dropIndex) return;
     if (!selectedLandingPage) return;
-    const newOrder = [...selectedLandingPage.landingpagesection_set];
-    const [moved] = newOrder.splice(draggedSectionIndex, 1);
-    newOrder.splice(idx, 0, moved);
+
+    const newSectionOrder = [...selectedLandingPage.landingpagesection_set];
+    const [movedSection] = newSectionOrder.splice(draggedSectionIndex, 1);
+    newSectionOrder.splice(dropIndex, 0, movedSection);
+    
     setSelectedLandingPage({
       ...selectedLandingPage,
-      landingpagesection_set: newOrder
+      landingpagesection_set: newSectionOrder
     });
+
     setDraggedSectionIndex(null);
     setIsSectionDragging(false);
+
     try {
-      const orderString = newOrder.map((s: any) => s.id).join(',');
+      const orderString = newSectionOrder.map((section: any) => section.id).join(',');
       await endpoints.reorderLandingPageSections(selectedLandingPage.id, { section_order: orderString });
       toast.success('Section order updated!');
     } catch (err) {
@@ -54,64 +63,100 @@ export default function PageCanvas({
     }
   };
 
+  // Handle drag end for section reordering
   const handleSectionDragEnd = () => {
     setDraggedSectionIndex(null);
     setIsSectionDragging(false);
   };
 
+  // Handle drag over for canvas (for adding new sections)
+  const handleCanvasDragOver = (e: React.DragEvent) => {
+    if (isSidebarDragging) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setIsDropTargetVisible(true);
+    }
+  };
+
+  // Handle drag leave for canvas
+  const handleCanvasDragLeave = () => {
+    setIsDropTargetVisible(false);
+  };
+
+  // Handle drop for adding new section from sidebar
+  const handleCanvasDrop = (e: React.DragEvent) => {
+    if (isSidebarDragging) {
+      e.preventDefault();
+      setIsDropTargetVisible(false);
+      handleSidebarDrop(e);
+    }
+  };
+
+  const sectionList = selectedLandingPage?.landingpagesection_set || [];
+
   return (
     <div
-  className={`mx-auto transition-all duration-300 overflow-y-auto max-h-[calc(100vh-100px)] ${
-    viewport === 'desktop' ? 'max-w-none w-full' :
-    viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
-    'max-w-sm border-x border-gray-200 mx-auto'
-  }`}
->
-
+      className={`mx-auto transition-all duration-300 overflow-y-auto max-h-[calc(100vh-100px)] ${
+        viewport === 'desktop' ? 'max-w-none w-full' :
+        viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
+        'max-w-sm border-x border-gray-200 mx-auto'
+      }`}
+    >
       <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">
-            {selectedLandingPage ? `${selectedLandingPage.name} - ${selectedLandingPage.landingpagesection_set?.length || 0} sections` : 'No page selected'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Drag elements from the sidebar to add them to your page</span>
-        </div>
+        <span className="text-sm text-gray-600">
+          {selectedLandingPage
+            ? `${selectedLandingPage.name} - ${sectionList.length} sections`
+            : 'No page selected'}
+        </span>
+        <span className="text-sm text-gray-600">
+          Drag elements from the sidebar to add them to your page
+        </span>
       </div>
+      {/* Drop area for new sections */}
       <div
-        onDragOver={isSidebarDragging ? handleSidebarDragOver : undefined}
-        onDrop={isSidebarDragging ? handleSidebarDrop : undefined}
+        className="flex-1 overflow-y-auto"
+        onDragOver={handleCanvasDragOver}
+        onDragLeave={handleCanvasDragLeave}
+        onDrop={handleCanvasDrop}
       >
         <div className={`mx-auto transition-all duration-300 ${
           viewport === 'desktop' ? 'max-w-none w-full' :
           viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
           'max-w-sm border-x border-gray-200 mx-auto'
         }`}>
-          {selectedLandingPage?.landingpagesection_set?.map((section: any, idx: number) => (
-            <div
-              key={section.section.id}
-              draggable={true}
-              onDragStart={(e) => handleSectionDragStart(e, idx)}
-              onDragEnd={handleSectionDragEnd}
-              onDragOver={(e) => handleSectionDragOver(e, idx)}
-              onDrop={(e) => handleSectionDrop(e, idx)}
+          {sectionList.length > 0 ? (
+            sectionList.map((section: any, sectionIndex: number) => (
+              <div
+                key={section.section.id}
+                draggable={true}
+                onDragStart={(e) => handleSectionDragStart(e, sectionIndex)}
+                onDragEnd={handleSectionDragEnd}
+                onDragOver={(e) => handleSectionDragOver(e, sectionIndex)}
+                onDrop={(e) => handleSectionDrop(e, sectionIndex)}
+              >
+                <SectionWidget
+                  section={section}
+                  isSelected={selectedSection?.section.id === section.section.id}
+                  template={getSectionType(section.section.section_type)}
+                  onSectionSelect={setSelectedSection}
+                  onOpenContentManager={handleOpenContentManager}
+                  onSectionDelete={handleSectionDelete}
+                  onRemoveContent={(contentId: number) => handleRemoveContent(section.section.id, contentId)}
+                  isSectionDragging={isSectionDragging}
+                  refreshKey={refreshKey}
+                />
+              </div>
+            ))
+          ) : (
+            <div className={`flex items-center justify-center h-64 border-2 border-dashed \
+              ${isDropTargetVisible ? 'border-blue-400 bg-blue-50' : 'border-gray-300'} \
+              rounded-lg m-4 transition-colors duration-200`}
             >
-              <SectionWidget
-                section={section}
-                isSelected={selectedSection?.section.id === section.section.id}
-                template={getSectionType(section.section.section_type)}
-                onSectionSelect={setSelectedSection}
-                onOpenContentManager={handleOpenContentManager}
-                onSectionDelete={handleSectionDelete}
-                onRemoveContent={(contentId: number) => handleRemoveContent(section.section.id, contentId)}
-                isSectionDragging={isSectionDragging}
-              />
-            </div>
-          )) || (
-            <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg m-4">
               <div className="text-center">
-                <Plus className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600">Drag elements here to build your page</p>
+                <Plus className={`h-8 w-8 mx-auto mb-2 ${isDropTargetVisible ? 'text-blue-400' : 'text-gray-400'}`} />
+                <p className={`${isDropTargetVisible ? 'text-blue-600' : 'text-gray-600'}`}>\
+                  {isDropTargetVisible ? 'Drop here to add section' : 'Drag elements here to build your page'}
+                </p>
               </div>
             </div>
           )}

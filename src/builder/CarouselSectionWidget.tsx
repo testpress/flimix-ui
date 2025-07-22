@@ -1,35 +1,63 @@
 import { useState } from 'react';
 import { Plus, Settings, Trash2 } from 'lucide-react';
 import { endpoints } from './api';
-import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 
 export default function CarouselSectionWidget({
   section,
   sectionContent = [],
   onOpenContentManager,
   onRemoveContent,
-  isContentLoading
+  isContentLoading,
+  onContentUpdate
 }: any) {
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const queryClient = useQueryClient();
+  // State for the index of the content item being dragged
+  const [draggedContentIndex, setDraggedContentIndex] = useState<number | null>(null);
 
-  const handleContentDragStart = (idx: number) => {
-    setDraggedIndex(idx);
+  // Handle drag start for content reordering
+  const handleContentDragStart = (contentIndex: number) => {
+    setDraggedContentIndex(contentIndex);
   };
 
+  // Allow dropping on content
   const handleContentDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleContentDrop = async (dropIdx: number) => {
-    if (draggedIndex === null || draggedIndex === dropIdx) return;
-    const newOrder = [...sectionContent];
-    const [moved] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(dropIdx, 0, moved);
-    const orderString = newOrder.map((item: any) => item.id).join(',');
-    await endpoints.reorderSectionContent(section.section.id, { content_order: orderString });
-    queryClient.invalidateQueries({ queryKey: ['section-content', section.section.id] });
-    setDraggedIndex(null);
+  // Handle drop for content reordering
+  const handleContentDrop = async (dropIndex: number) => {
+    if (draggedContentIndex === null || draggedContentIndex === dropIndex) return;
+
+    const newContentOrder = [...sectionContent];
+    const [movedContent] = newContentOrder.splice(draggedContentIndex, 1);
+
+    newContentOrder.splice(dropIndex, 0, movedContent);
+    const orderString = newContentOrder.map((item: any) => item.id).join(',');
+
+    try {
+      await endpoints.reorderSectionContent(section.section.id, { content_order: orderString });
+      toast.success('Content order updated!');
+      setDraggedContentIndex(null);
+      if (onContentUpdate) onContentUpdate();
+    } catch (error) {
+      toast.error('Failed to update content order');
+    }
+    
+  };
+
+  // Handle removing a content item
+  const handleRemoveContentItem = async (contentId: number) => {
+    try {
+      if (onRemoveContent) {
+        onRemoveContent(contentId);
+      } else {
+        await endpoints.removeContentFromSection(section.section.id, contentId);
+        toast.success('Content removed');
+        if (onContentUpdate) onContentUpdate();
+      }
+    } catch (error) {
+      toast.error('Failed to remove content');
+    }
   };
 
   return (
@@ -54,33 +82,46 @@ export default function CarouselSectionWidget({
         {isContentLoading ? (
           <div className="flex items-center justify-center h-32 w-full text-gray-400">Loading...</div>
         ) : sectionContent.length > 0 ? (
-          sectionContent.map((item: any, idx: number) => (
+          sectionContent.map((item: any, contentIndex: number) => (
             <div
               key={item.id}
               draggable
-              onDragStart={() => handleContentDragStart(idx)}
+              onDragStart={() => handleContentDragStart(contentIndex)}
               onDragOver={handleContentDragOver}
-              onDrop={() => handleContentDrop(idx)}
-              className="flex-shrink-0 w-48 h-64 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex flex-col items-center justify-center overflow-hidden"
+              onDrop={() => handleContentDrop(contentIndex)}
+              className="flex-shrink-0 w-48 relative group"
             >
-              <img
-                src={item.content?.poster_url || 'https://placehold.co/200x300?text=No+Image'}
-                alt={item.content?.title}
-                className="w-full h-40 object-cover rounded-t"
-                onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/200x300?text=No+Image'; }}
-              />
-              <div className="p-2 text-center">
-                <span className="text-gray-700 text-sm font-medium block truncate">{item.content?.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveContent(item.id);
-                  }}
-                  className="text-red-500 text-xs hover:text-red-700"
-                  title="Remove item"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+              <div className="rounded-lg overflow-hidden shadow-md transition-all duration-200 transform group-hover:shadow-xl group-hover:-translate-y-1">
+                <img
+                  src={item.content?.poster_url || 'https://placehold.co/200x300?text=No+Image'}
+                  alt={item.content?.title}
+                  className="w-full h-64 object-cover"
+                  onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/200x300?text=No+Image'; }}
+                />
+                <div className="p-3 bg-white">
+                  <h4 className="font-medium text-sm text-gray-900 truncate">{item.content?.title}</h4>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-gray-500 capitalize">{item.content?.type}</span>
+                    <span className="text-xs text-gray-500">
+                      {item.content?.release_year}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveContentItem(item.id);
+                    }}
+                    className="mt-2 w-full text-red-500 text-xs hover:text-red-700 flex items-center justify-center gap-1 py-1 border border-red-200 rounded hover:bg-red-50"
+                    title="Remove item"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+              <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                {item.content?.duration_minutes ? `${item.content.duration_minutes} min` : 
+                 item.content?.seasons ? `${item.content.seasons} seasons` : ''}
               </div>
             </div>
           ))

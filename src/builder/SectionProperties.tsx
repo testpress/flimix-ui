@@ -1,33 +1,29 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { endpoints } from './api';
 import { toast } from 'react-hot-toast';
 
 export default function SectionProperties({ section, onUpdate }: any) {
-  const [name, setName] = useState(section.section.name || "");
-  const queryClient = useQueryClient();
+  const [sectionName, setSectionName] = useState(section.section.name || "");
 
+  // Update local state if section changes
   useEffect(() => {
-    setName(section.section.name || "");
+    setSectionName(section.section.name || "");
   }, [section.section.id, section.section.name]);
 
+  // Handle input change
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setName(newName);
-    onUpdate({ name: newName });
+    setSectionName(e.target.value);
   };
 
-  const updateSectionNameMutation = useMutation({
-    mutationFn: ({ id, data }: any) => endpoints.updateSectionName(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sections'] });
+  // Save the new section name
+  const handleSave = async () => {
+    try {
+      await endpoints.updateSectionName(section.section.id, { name: sectionName });
       toast.success('Section name updated!');
-    },
-    onError: () => toast.error('Failed to update section name')
-  });
-
-  const handleSave = () => {
-    updateSectionNameMutation.mutate({ id: section.section.id, data: { name } });
+      onUpdate({ name: sectionName });
+    } catch {
+      toast.error('Failed to update section name');
+    }
   };
 
   return (
@@ -38,7 +34,7 @@ export default function SectionProperties({ section, onUpdate }: any) {
         </label>
         <input
           type="text"
-          value={name}
+          value={sectionName}
           onChange={handleNameChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
         />

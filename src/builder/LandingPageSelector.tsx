@@ -1,10 +1,11 @@
 export default function LandingPageSelector({ landingPages, selectedLandingPage, setSelectedLandingPage }: any) {
+  // Dropdown for selecting a landing page to edit
   return (
     <select
       value={selectedLandingPage?.id || ''}
       onChange={e => {
-        const page = landingPages.find((p: any) => p.id === parseInt(e.target.value));
-        setSelectedLandingPage(page);
+        const selectedPage = landingPages.find((page: any) => page.id === parseInt(e.target.value));
+        setSelectedLandingPage(selectedPage);
       }}
       className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-900"
     >

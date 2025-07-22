@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { endpoints } from './api';
 import HeroSectionWidget from './HeroSectionWidget';
 import CarouselSectionWidget from './CarouselSectionWidget';
@@ -10,13 +10,22 @@ export default function SectionWidget({
   onSectionSelect,
   onOpenContentManager,
   onSectionDelete,
-  onRemoveContent
+  onRemoveContent,
+  refreshKey = 0
 }: any) {
-  const { data: sectionContent = [], isLoading: isContentLoading } = useQuery({
-    queryKey: ['section-content', section.section.id],
-    queryFn: () => endpoints.getSectionContent(section.section.id),
-  });
+  const [sectionContent, setSectionContent] = useState<any[]>([]);
+  const [isContentLoading, setIsContentLoading] = useState(true);
 
+  // Fetch section content when section or refreshKey changes
+  useEffect(() => {
+    setIsContentLoading(true);
+    endpoints.getSectionContent(section.section.id).then((data) => {
+      setSectionContent(data);
+      setIsContentLoading(false);
+    });
+  }, [section.section.id, refreshKey]);
+
+  // Render the correct widget for this section type
   const renderSectionContent = () => {
     switch (section.section.section_type) {
       case 'hero':
@@ -38,6 +47,13 @@ export default function SectionWidget({
             onOpenContentManager={onOpenContentManager}
             onRemoveContent={onRemoveContent}
             isContentLoading={isContentLoading}
+            onContentUpdate={() => {
+              setIsContentLoading(true);
+              endpoints.getSectionContent(section.section.id).then((data) => {
+                setSectionContent(data);
+                setIsContentLoading(false);
+              });
+            }}
           />
         );
       default:

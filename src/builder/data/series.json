@@ -1,0 +1,90 @@
+[
+  { 
+    "id": 1, 
+    "title": "Breaking Bad", 
+    "description": "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine to secure his family's future.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BYmQ4YWMxYjUtNjZmYi00MDQ1LWFjMjMtNjA5ZDdiYjdiODU5XkEyXkFqcGdeQXVyMTMzNDExODE5._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BMTJiMzgwZTktYzZhZC00YzhhLWEzZDUtMGM2NTE4MzQ4NGFmXkEyXkFqcGdeQXVyMTYzMDM0NTU@._V1_.jpg",
+    "release_year": 2008,
+    "seasons": 5,
+    "episodes_count": 62
+  },
+  { 
+    "id": 2, 
+    "title": "Game of Thrones", 
+    "description": "Nine noble families fight for control over the lands of Westeros, while an ancient enemy returns after being dormant for millennia.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BYTRiNDQwYzAtMzVlZS00NTI5LWJjYjUtMzkwNTUzMWMxZTllXkEyXkFqcGdeQXVyNDIzMzcwNjc@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BZTg4YzdjNTctNDI3YS00Y2RiLWJlMjktYzhkYjRkMmYxNjNhXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg",
+    "release_year": 2011,
+    "seasons": 8,
+    "episodes_count": 73
+  },
+  { 
+    "id": 3, 
+    "title": "Stranger Things", 
+    "description": "When a young boy disappears, his mother, a police chief, and his friends must confront terrifying supernatural forces in order to get him back.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BMDZkYmVhNjMtNWU4MC00MDQxLWE3MjYtZGMzZWI1ZjhlOWJmXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BN2ZmYjg1YmItNWQ4OC00YWM0LWE0ZDktYThjOTZiZjhhN2Q2XkEyXkFqcGdeQXVyNjgxNTQ3Mjk@._V1_.jpg",
+    "release_year": 2016,
+    "seasons": 4,
+    "episodes_count": 34
+  },
+  { 
+    "id": 4, 
+    "title": "The Mandalorian", 
+    "description": "The travels of a lone bounty hunter in the outer reaches of the galaxy, far from the authority of the New Republic.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BZDhlMzY0ZGItZTcyNS00ZTAxLWIyMmYtZGQ2ODg5OWZiYmJkXkEyXkFqcGdeQXVyODkzNTgxMDg@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BYjc5MTU4N2EtYTkyMi00YmFhLThjOGItNzQ0MGFiYzRkZWZiXkEyXkFqcGdeQXVyMDM2NDM2MQ@@._V1_.jpg",
+    "release_year": 2019,
+    "seasons": 3,
+    "episodes_count": 24
+  },
+  { 
+    "id": 5, 
+    "title": "The Office", 
+    "description": "A mockumentary on a group of typical office workers, where the workday consists of ego clashes, inappropriate behavior, and tedium.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BMDNkOTE4NDQtMTNmYi00MWE0LWE4ZTktYTc0NzhhNWIzNzJiXkEyXkFqcGdeQXVyMzQ2MDI5NjU@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BMjA5OTExMTIwNF5BMl5BanBnXkFtZTcwMjM3NTc0Mg@@._V1_.jpg",
+    "release_year": 2005,
+    "seasons": 9,
+    "episodes_count": 201
+  },
+  { 
+    "id": 6, 
+    "title": "The Crown", 
+    "description": "Follows the political rivalries and romance of Queen Elizabeth II's reign and the events that shaped the second half of the twentieth century.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BZmY0MzBlNjctNTRmNy00Njk3LWFjMzctMWQwZDAwMGJmY2MyXkEyXkFqcGdeQXVyMDM2NDM2MQ@@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BNGI1ODkzMDQtOTNmMS00ZDgxLTk1MWEtZWJhMzBjMjg3MzVjXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg",
+    "release_year": 2016,
+    "seasons": 5,
+    "episodes_count": 50
+  },
+  { 
+    "id": 7, 
+    "title": "The Witcher", 
+    "description": "Geralt of Rivia, a solitary monster hunter, struggles to find his place in a world where people often prove more wicked than beasts.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BN2FiOWU4YzYtMzZiOS00MzcyLTlkOGEtOTgwZmEwMzAxMzA3XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BOGE4MmVjMDgtMzIzYy00NjEwLWJlODMtMDI1MGY2ZDlhMzE2XkEyXkFqcGdeQXVyMzY0MTE3NzU@._V1_.jpg",
+    "release_year": 2019,
+    "seasons": 3,
+    "episodes_count": 24
+  },
+  { 
+    "id": 8, 
+    "title": "Sacred Games", 
+    "description": "A link in their pasts leads an honest cop to a fugitive gang boss, whose cryptic warning spurs the officer on a quest to save Mumbai from cataclysm.",
+    "type": "series", 
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BMjJlMjJlMzYtNmU5Yy00N2MwLWJmMjEtNWUwZWIyMGViZDgyXkEyXkFqcGdeQXVyOTAzMTc2MjA@._V1_.jpg",
+    "background_image_url": "https://m.media-amazon.com/images/M/MV5BYTMzYTQ1NzAtOGY4OC00ZGM5LThiMmUtMzgzZjgzNzNjZjJmXkEyXkFqcGdeQXVyODk2ODI3MTU@._V1_.jpg",
+    "release_year": 2018,
+    "seasons": 2,
+    "episodes_count": 16
+  }
+] 
