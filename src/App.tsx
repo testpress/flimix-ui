@@ -1,26 +1,24 @@
 import { useEffect, useState } from 'react';
-import { loadWidgets } from './loadWidgets';
+import PageBuilder from './builder/PageBuilder';
 import WidgetRenderer from './WidgetRenderer';
+import { loadWidgets } from './loadWidgets';
 
 function App() {
   const [ready, setReady] = useState(false);
   const [pageData, setPageData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Load widgets and fetch page data
   useEffect(() => {
-    // Load widgets first
     loadWidgets().then(() => setReady(true));
-    
-    // Fetch page data from API
     fetch('http://localhost:8002/api/page-data/')
       .then(response => response.json())
       .then(data => {
-        console.log(data);
         setPageData(data);
         setLoading(false);
       })
-      .catch(error => {
-        console.error('Error fetching page data:', error);
+      .catch(() => {
         setLoading(false);
       });
   }, []);
@@ -31,9 +29,23 @@ function App() {
 
   return (
     <div className="bg-[#111] text-white w-full min-h-screen overflow-hidden">
-      {pageData?.children.map((widget: any, index: number) => (
-        <WidgetRenderer key={index} widget={widget} />
-      ))}
+      <div className="flex justify-end p-4">
+        <button
+          className={`px-4 py-2 rounded ${isPreviewMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}
+          onClick={() => setIsPreviewMode(!isPreviewMode)}
+        >
+          {isPreviewMode ? 'Back to Builder' : 'Preview'}
+        </button>
+      </div>
+      {isPreviewMode ? (
+        <div>
+          {pageData?.children.map((widget: any, index: number) => (
+            <WidgetRenderer key={index} widget={widget} />
+          ))}
+        </div>
+      ) : (
+        <PageBuilder setIsPreviewMode={setIsPreviewMode} />
+      )}
     </div>
   );
 }

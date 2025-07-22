@@ -1,5 +1,4 @@
 import type { WidgetModule } from './BaseWidget';
-import WidgetRenderer from '../WidgetRenderer';
 
 const Carousel: WidgetModule = {
   getType() {
