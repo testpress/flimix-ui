@@ -1,8 +1,37 @@
-import React, { useState } from 'react';
-import SectionWidget from './SectionWidget';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { endpoints } from './api';
 import { toast } from 'react-hot-toast';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
+import SortableSection from './SortableSection';
+
+interface PageCanvasProps {
+  selectedLandingPage: any;
+  setSelectedLandingPage: (page: any) => void;
+  selectedSection: any;
+  setSelectedSection: (section: any) => void;
+  isSidebarDragging: boolean;
+  handleOpenContentManager: (section: any) => void;
+  handleSectionDelete: (sectionId: number) => void;
+  handleRemoveContent: (sectionId: number, contentId: number) => void;
+  viewport: 'desktop' | 'tablet' | 'mobile';
+  refreshKey: number;
+}
 
 export default function PageCanvas({
   selectedLandingPage,
@@ -10,52 +39,55 @@ export default function PageCanvas({
   selectedSection,
   setSelectedSection,
   isSidebarDragging,
-  handleSidebarDrop,
-  getSectionType,
   handleOpenContentManager,
   handleSectionDelete,
   handleRemoveContent,
   viewport,
   refreshKey
-}: any) {
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
-  const [isSectionDragging, setIsSectionDragging] = useState(false);
+}: PageCanvasProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: 'canvas-drop-area',
+  });
+
   const [isDropTargetVisible, setIsDropTargetVisible] = useState(false);
+  
+  useEffect(() => {
+    setIsDropTargetVisible(isOver && isSidebarDragging);
+  }, [isOver, isSidebarDragging]);
 
-  // Handle drag start for section reordering
-  const handleSectionDragStart = (e: React.DragEvent, sectionIndex: number) => {
-    setDraggedSectionIndex(sectionIndex);
-    setIsSectionDragging(true);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', sectionIndex.toString());
-  };
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      return;
+    }
 
-  // Allow dropping on section
-  const handleSectionDragOver = (e: React.DragEvent, _sectionIndex: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+    if (!active.id.toString().startsWith('section-')) {
+      return;
+    }
 
-  // Handle drop for section reordering
-  const handleSectionDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedSectionIndex === null || draggedSectionIndex === dropIndex) return;
     if (!selectedLandingPage) return;
 
+    const oldIndex = parseInt(active.id.toString().split('-')[1]);
+    const newIndex = parseInt(over.id.toString().split('-')[1]);
+    
     const newSectionOrder = [...selectedLandingPage.landingpagesection_set];
-    const [movedSection] = newSectionOrder.splice(draggedSectionIndex, 1);
-    newSectionOrder.splice(dropIndex, 0, movedSection);
+    const reorderedSections = arrayMove(newSectionOrder, oldIndex, newIndex);
     
     setSelectedLandingPage({
       ...selectedLandingPage,
-      landingpagesection_set: newSectionOrder
+      landingpagesection_set: reorderedSections
     });
 
-    setDraggedSectionIndex(null);
-    setIsSectionDragging(false);
-
     try {
-      const orderString = newSectionOrder.map((section: any) => section.id).join(',');
+      const orderString = reorderedSections.map((section: any) => section.id).join(',');
       await endpoints.reorderLandingPageSections(selectedLandingPage.id, { section_order: orderString });
       toast.success('Section order updated!');
     } catch (err) {
@@ -63,40 +95,12 @@ export default function PageCanvas({
     }
   };
 
-  // Handle drag end for section reordering
-  const handleSectionDragEnd = () => {
-    setDraggedSectionIndex(null);
-    setIsSectionDragging(false);
-  };
-
-  // Handle drag over for canvas (for adding new sections)
-  const handleCanvasDragOver = (e: React.DragEvent) => {
-    if (isSidebarDragging) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      setIsDropTargetVisible(true);
-    }
-  };
-
-  // Handle drag leave for canvas
-  const handleCanvasDragLeave = () => {
-    setIsDropTargetVisible(false);
-  };
-
-  // Handle drop for adding new section from sidebar
-  const handleCanvasDrop = (e: React.DragEvent) => {
-    if (isSidebarDragging) {
-      e.preventDefault();
-      setIsDropTargetVisible(false);
-      handleSidebarDrop(e);
-    }
-  };
-
   const sectionList = selectedLandingPage?.landingpagesection_set || [];
+  const sectionIds = sectionList.map((_: any, index: number) => `section-${index}`);
 
   return (
     <div
-      className={`mx-auto transition-all duration-300 overflow-y-auto max-h-[calc(100vh-100px)] ${
+      className={`mx-auto transition-all duration-300 overflow-y-auto max-h-[calc(100vh-100px)] relative z-10 ${
         viewport === 'desktop' ? 'max-w-none w-full' :
         viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
         'max-w-sm border-x border-gray-200 mx-auto'
@@ -112,41 +116,41 @@ export default function PageCanvas({
           Drag elements from the sidebar to add them to your page
         </span>
       </div>
-      {/* Drop area for new sections */}
-      <div
-        className="flex-1 overflow-y-auto"
-        onDragOver={handleCanvasDragOver}
-        onDragLeave={handleCanvasDragLeave}
-        onDrop={handleCanvasDrop}
-      >
-        <div className={`mx-auto transition-all duration-300 ${
-          viewport === 'desktop' ? 'max-w-none w-full' :
-          viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
-          'max-w-sm border-x border-gray-200 mx-auto'
-        }`}>
+      
+      <div className="flex-1 overflow-y-auto">
+        <div 
+          ref={setDroppableRef}
+          className={`mx-auto transition-all duration-300 relative ${
+            viewport === 'desktop' ? 'max-w-none w-full' :
+            viewport === 'tablet' ? 'max-w-2xl border-x border-gray-200 mx-auto' :
+            'max-w-sm border-x border-gray-200 mx-auto'
+          }`}
+        >
           {sectionList.length > 0 ? (
-            sectionList.map((section: any, sectionIndex: number) => (
-              <div
-                key={section.section.id}
-                draggable={true}
-                onDragStart={(e) => handleSectionDragStart(e, sectionIndex)}
-                onDragEnd={handleSectionDragEnd}
-                onDragOver={(e) => handleSectionDragOver(e, sectionIndex)}
-                onDrop={(e) => handleSectionDrop(e, sectionIndex)}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sectionIds}
+                strategy={verticalListSortingStrategy}
               >
-                <SectionWidget
-                  section={section}
-                  isSelected={selectedSection?.section.id === section.section.id}
-                  template={getSectionType(section.section.section_type)}
-                  onSectionSelect={setSelectedSection}
-                  onOpenContentManager={handleOpenContentManager}
-                  onSectionDelete={handleSectionDelete}
-                  onRemoveContent={(contentId: number) => handleRemoveContent(section.section.id, contentId)}
-                  isSectionDragging={isSectionDragging}
-                  refreshKey={refreshKey}
-                />
-              </div>
-            ))
+                {sectionList.map((section: any, sectionIndex: number) => (
+                  <SortableSection
+                    key={`section-${sectionIndex}`}
+                    id={`section-${sectionIndex}`}
+                    section={section}
+                    isSelected={selectedSection?.section.id === section.section.id}
+                    onSectionSelect={setSelectedSection}
+                    onOpenContentManager={handleOpenContentManager}
+                    onSectionDelete={handleSectionDelete}
+                    onRemoveContent={(contentId: number) => handleRemoveContent(section.section.id, contentId)}
+                    refreshKey={refreshKey}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className={`flex items-center justify-center h-64 border-2 border-dashed \
               ${isDropTargetVisible ? 'border-blue-400 bg-blue-50' : 'border-gray-300'} \
@@ -154,7 +158,7 @@ export default function PageCanvas({
             >
               <div className="text-center">
                 <Plus className={`h-8 w-8 mx-auto mb-2 ${isDropTargetVisible ? 'text-blue-400' : 'text-gray-400'}`} />
-                <p className={`${isDropTargetVisible ? 'text-blue-600' : 'text-gray-600'}`}>\
+                <p className={`${isDropTargetVisible ? 'text-blue-600' : 'text-gray-600'}`}>
                   {isDropTargetVisible ? 'Drop here to add section' : 'Drag elements here to build your page'}
                 </p>
               </div>

@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react';
 import { endpoints } from './api';
 import HeroSectionWidget from './HeroSectionWidget';
 import CarouselSectionWidget from './CarouselSectionWidget';
-import { Settings } from 'lucide-react';
+import { Settings, Trash2 } from 'lucide-react';
+
+interface SectionWidgetProps {
+  section: any;
+  isSelected: boolean;
+  onSectionSelect: (section: any) => void;
+  onOpenContentManager: (section: any) => void;
+  onSectionDelete: (sectionId: number) => void;
+  onRemoveContent: (contentId: number) => void;
+  refreshKey?: number;
+}
 
 export default function SectionWidget({
   section,
@@ -12,20 +22,51 @@ export default function SectionWidget({
   onSectionDelete,
   onRemoveContent,
   refreshKey = 0
-}: any) {
+}: SectionWidgetProps) {
   const [sectionContent, setSectionContent] = useState<any[]>([]);
   const [isContentLoading, setIsContentLoading] = useState(true);
 
-  // Fetch section content when section or refreshKey changes
   useEffect(() => {
-    setIsContentLoading(true);
-    endpoints.getSectionContent(section.section.id).then((data) => {
-      setSectionContent(data);
-      setIsContentLoading(false);
-    });
+    const fetchContent = async () => {
+      setIsContentLoading(true);
+      try {
+        const data = await endpoints.getSectionContent(section.section.id);
+        setSectionContent(data);
+      } catch (error) {
+        console.error('Failed to fetch section content:', error);
+      } finally {
+        setIsContentLoading(false);
+      }
+    };
+
+    fetchContent();
   }, [section.section.id, refreshKey]);
 
-  // Render the correct widget for this section type
+  const handleSectionClick = () => {
+    onSectionSelect(section);
+  };
+
+  const handleOpenContentManager = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    onOpenContentManager(section);
+  };
+
+  const handleDeleteSection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSectionDelete(section.section.id);
+  };
+
+  const handleContentUpdate = async () => {
+    try {
+      const data = await endpoints.getSectionContent(section.section.id);
+      setSectionContent(data);
+    } catch (error) {
+      console.error('Failed to refresh section content:', error);
+    }
+  };
+
   const renderSectionContent = () => {
     switch (section.section.section_type) {
       case 'hero':
@@ -34,7 +75,7 @@ export default function SectionWidget({
             section={section}
             sectionContent={sectionContent}
             isSelected={isSelected}
-            onOpenContentManager={onOpenContentManager}
+            onOpenContentManager={handleOpenContentManager}
             isContentLoading={isContentLoading}
           />
         );
@@ -44,16 +85,10 @@ export default function SectionWidget({
             section={section}
             sectionContent={sectionContent}
             isSelected={isSelected}
-            onOpenContentManager={onOpenContentManager}
+            onOpenContentManager={handleOpenContentManager}
             onRemoveContent={onRemoveContent}
             isContentLoading={isContentLoading}
-            onContentUpdate={() => {
-              setIsContentLoading(true);
-              endpoints.getSectionContent(section.section.id).then((data) => {
-                setSectionContent(data);
-                setIsContentLoading(false);
-              });
-            }}
+            onContentUpdate={handleContentUpdate}
           />
         );
       default:
@@ -67,32 +102,34 @@ export default function SectionWidget({
 
   return (
     <div
-      className={`relative group cursor-pointer transition-all duration-200`}
-      onClick={() => onSectionSelect(section)}
+      className="relative group cursor-pointer transition-all duration-200"
+      onClick={handleSectionClick}
     >
       <div className="bg-gray-100 text-black p-2 flex items-center justify-between z-10 rounded-t-lg">
-        <span className="text-sm font-medium text-gray-900">{section.section.name}</span>
-        <div className="flex items-center gap-1">
-          {section.section.section_type === 'hero' && (
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                onOpenContentManager(section);
-              }}
-              className="p-1 hover:bg-gray-700 rounded flex items-center gap-1"
-              title="Manage Content"
-            >
-              <Settings className="h-3 w-3" />
-            </button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-900">{section.section.name}</span>
+          {section.section.section_type === 'carousel' && (
+            <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+              {sectionContent.length} items
+            </span>
           )}
+        </div>
+        <div className="flex items-center gap-1">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSectionDelete(section.section.id);
-            }}
-            className="p-1 hover:bg-red-600 hover:text-white rounded"
+            type="button"
+            onClick={handleOpenContentManager}
+            className="p-1 hover:bg-red-600 hover:text-white rounded flex items-center gap-1"
+            title="Manage Content"
           >
-            ×
+            <Settings className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteSection}
+            className="p-1 hover:bg-red-600 hover:text-white rounded"
+            title="Delete Section"
+          >
+            <Trash2 className="h-3 w-3" />
           </button>
         </div>
       </div>

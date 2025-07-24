@@ -1,20 +1,33 @@
 import { Plus } from 'lucide-react';
 
+interface HeroSectionWidgetProps {
+  section: any;
+  sectionContent: any[];
+  isSelected: boolean;
+  onOpenContentManager: (e?: React.MouseEvent) => void;
+  isContentLoading: boolean;
+}
+
 export default function HeroSectionWidget({
   section,
   sectionContent = [],
   onOpenContentManager,
   isContentLoading
-}: any) {
-  // Get the first content item for the hero section (should only be one)
+}: HeroSectionWidgetProps) {
   const heroContent = sectionContent.length > 0 ? sectionContent[0].content : null;
+
+  const handleOpenContentManager = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    onOpenContentManager(e);
+  };
 
   return (
     <div className="relative h-96 rounded-lg overflow-hidden group">
       {isContentLoading ? (
         <div className="flex items-center justify-center h-full bg-gray-200 text-gray-400">Loading...</div>
       ) : heroContent ? (
-        // Render hero content if available
         <>
           <div className="absolute inset-0">
             <img
@@ -50,28 +63,22 @@ export default function HeroSectionWidget({
               </button>
             </div>
           </div>
-          {/* Button to change hero content */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenContentManager(section);
-            }}
+            type="button"
+            onClick={handleOpenContentManager}
             className="absolute top-4 right-4 px-3 py-1 bg-black bg-opacity-50 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
           >
             Change Content
           </button>
         </>
       ) : (
-        // Prompt to add content if none exists
         <div className="flex items-center justify-center h-full bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-2">{section.section.name}</h2>
             <p className="mb-4 text-gray-200">Add a movie or series to display here</p>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenContentManager(section);
-              }}
+              type="button"
+              onClick={handleOpenContentManager}
               className="px-6 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-100 flex items-center gap-2 mx-auto"
             >
               <Plus className="h-4 w-4" />
