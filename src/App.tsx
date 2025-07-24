@@ -1,80 +1,85 @@
 import { useEffect, useState } from 'react';
-import { loadWidgets } from './loadWidgets';
+import PageBuilder from './builder/PageBuilder';
 import WidgetRenderer from './WidgetRenderer';
-
-const pageJson = {
-  type: 'page',
-  children: [
-    {
-      type: 'hero',
-      attributes: {
-        backgroundImage: 'https://image.tmdb.org/t/p/original/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
-        title: 'Dune: Part Two',
-        description: 'Paul Atreides unites with the Fremen to wage war against House Harkonnen.',
-        cta: { text: 'Watch Now', link: '#' }
-      }
-    },
-    {
-      type: 'carousel',
-      attributes: { title: 'Trending Now' },
-      children: [
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'Oppenheimer',
-            poster: 'https://image.tmdb.org/t/p/w500/ptpr0kGAckfQkJeJIt8st5dglvd.jpg',
-            link: '#'
-          }
-        },
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'The Batman',
-            poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
-            link: '#'
-          }
-        }
-      ]
-    },
-    {
-      type: 'carousel',
-      attributes: { title: 'Action & Adventure' },
-      children: [
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'John Wick 4',
-            poster: 'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
-            link: '#'
-          }
-        },
-        {
-          type: 'movie-card',
-          attributes: {
-            title: 'Extraction 2',
-            poster: 'https://image.tmdb.org/t/p/w500/7gKI9hpEMcZUQpNgKrkDzJpbnNS.jpg',
-            link: '#'
-          }
-        }
-      ]
-    }
-  ]
-};
+import { loadWidgets } from './loadWidgets';
+import { endpoints } from './builder/api';
 
 function App() {
-  const [ready, setReady] = useState(false);
+  // State for widget system readiness
+  const [widgetsReady, setWidgetsReady] = useState(false);
+  // State for the current page data (structure and content)
+  const [currentPageData, setCurrentPageData] = useState<any>(null);
+  // State for initial loading spinner
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // State for preview refresh spinner
+  const [isRefreshingPreview, setIsRefreshingPreview] = useState(false);
+  // State for preview mode toggle
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Load widgets and fetch page data on mount
   useEffect(() => {
-    loadWidgets().then(() => setReady(true));
+    loadWidgets().then(() => setWidgetsReady(true));
+    fetchPageData(true);
   }, []);
 
-  if (!ready) return <div style={{ color: 'white' }}>Loading widgets...</div>;
+  // Refresh data whenever preview mode is toggled on
+  useEffect(() => {
+    if (isPreviewMode) {
+      fetchPageData(false);
+    }
+  }, [isPreviewMode]);
+
+  // Fetch page data from API
+  const fetchPageData = (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setIsInitialLoading(true);
+    } else {
+      setIsRefreshingPreview(true);
+    }
+
+    endpoints.getPageData()
+      .then(pageData => {
+        setCurrentPageData(pageData);
+        setIsInitialLoading(false);
+        setIsRefreshingPreview(false);
+      })
+      .catch(() => {
+        setIsInitialLoading(false);
+        setIsRefreshingPreview(false);
+      });
+  };
+
+  if (!widgetsReady || isInitialLoading) {
+    return <div className="text-white h-screen flex justify-center items-center">Loading...</div>;
+  }
 
   return (
-    <div style={{ backgroundColor: '#111', color: 'white' }}>
-      {pageJson.children.map((widget, index) => (
-        <WidgetRenderer key={index} widget={widget} />
-      ))}
+    <div className="bg-[#111] text-white w-full min-h-screen overflow-hidden">
+      {/* Preview/Builder toggle button */}
+      <div className="flex justify-end p-4">
+        <button
+          className={`px-4 py-2 rounded ${isPreviewMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'}`}
+          onClick={() => setIsPreviewMode(!isPreviewMode)}
+        >
+          {isPreviewMode ? 'Back to Builder' : 'Preview'}
+        </button>
+      </div>
+      {/* Main content: Preview or Builder */}
+      {isPreviewMode ? (
+        <div className="preview-container">
+          {isRefreshingPreview ? (
+            <div className="flex items-center justify-center h-32 text-gray-400">
+              Refreshing preview...
+            </div>
+          ) : (
+            currentPageData?.children.map((widget: any, index: number) => (
+              <WidgetRenderer key={index} widget={widget} />
+            ))
+          )}
+        </div>
+      ) : (
+        <PageBuilder setIsPreviewMode={setIsPreviewMode} onPageUpdate={() => fetchPageData(false)} />
+      )}
     </div>
   );
 }

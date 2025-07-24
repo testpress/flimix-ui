@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "name": "Home Page",
+    "is_active": true,
+    "landingpagesection_set": [
+      {
+        "id": 101,
+        "section": { "id": 1, "name": "Featured Hero", "section_type": "hero", "content_selection_type": "manual" }
+      },
+      {
+        "id": 102,
+        "section": { "id": 2, "name": "Popular Movies", "section_type": "carousel", "content_selection_type": "manual" }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Movies Page",
+    "is_active": false,
+    "landingpagesection_set": []
+  }
+] 

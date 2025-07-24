@@ -8,26 +8,22 @@ const HeroWidget: WidgetModule = {
   render({ attributes }) {
     const { backgroundImage, title, description, cta } = attributes;
     return (
-      <div style={{
-        backgroundImage: `url(${backgroundImage})`,
-        height: "60vh",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        color: "white",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "40px"
-      }}>
-        <h1 style={{ fontSize: "3em", margin: 0 }}>{title}</h1>
-        <p style={{ fontSize: "1.2em", maxWidth: "600px" }}>{description}</p>
-        <a href={cta.link} style={{
-          marginTop: "20px",
-          padding: "10px 20px",
-          backgroundColor: "red",
-          color: "white",
-          textDecoration: "none"
-        }}>{cta.text}</a>
+      <div
+        className="h-[80vh] w-full bg-cover bg-center text-white flex flex-col justify-center p-10"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(${backgroundImage})`,
+        }}
+      >
+        <div className="max-w-[800px]">
+          <h1 className="text-[3.5em] m-0 drop-shadow-lg">{title}</h1>
+          <p className="text-[1.2em] max-w-[600px] drop-shadow">{description}</p>
+          <a
+            href={cta?.link || '#'}
+            className="inline-block mt-5 px-6 py-3 bg-white text-black no-underline rounded font-bold uppercase tracking-wider"
+          >
+            {cta?.text || 'Watch Now'}
+          </a>
+        </div>
       </div>
     );
   }
